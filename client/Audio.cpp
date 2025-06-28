@@ -9,12 +9,12 @@ Audio::Audio() {
     Init();
 }
 
-Audio::~Audio() { Pa_Terminate(); }
+Audio::~Audio() {
+    Clear();
+    Pa_Terminate();
+}
 
-void Audio::Update() {
-    input_devices.clear();
-    output_devices.clear();
-
+void Audio::Clear() {
     if (input_stream) {
         Pa_StopStream(input_stream);
     }
@@ -23,36 +23,6 @@ void Audio::Update() {
     }
 
     input_stream = output_stream = nullptr;
-    Init();
-}
-
-void Audio::Init() {
-    const auto num_devices = DeviceCount();
-    if (num_devices < 0) {
-        LOG_ERROR << "num_devices = " << num_devices;
-        return;
-    }
-
-    input_devices.reserve(num_devices);
-    output_devices.reserve(num_devices);
-
-    for (int num_device = 0; num_device < num_devices; ++num_device) {
-        const auto* device_info_ptr = Pa_GetDeviceInfo(num_device);
-
-        if (device_info_ptr && device_info_ptr->maxInputChannels > 0) {
-            LOG_DEBUG << "Device #" << num_device << ": " << device_info_ptr->name
-                      << " [Input channels: " << device_info_ptr->maxInputChannels << "]";
-
-            input_devices.emplace_back(num_device);
-        }
-
-        if (device_info_ptr && device_info_ptr->maxOutputChannels > 0) {
-            LOG_DEBUG << "Device #" << num_device << ": " << device_info_ptr->name
-                      << " [Output channels: " << device_info_ptr->maxInputChannels << "]";
-
-            output_devices.emplace_back(num_device);
-        }
-    }
 }
 
 int Audio::DeviceCount() const noexcept { return Pa_GetDeviceCount(); }
@@ -72,10 +42,6 @@ const PaDeviceInfo* Audio::GetDefaultOutputDevice() const noexcept {
     const auto device_number = GetDefaultOutputDeviceIndex();
     return GetDeviceInfo(device_number);
 }
-
-const std::vector<size_t>& Audio::GetInputDevices() const noexcept { return input_devices; }
-
-const std::vector<size_t>& Audio::GetOutputDevices() const noexcept { return output_devices; }
 
 void Audio::CreateDefaultInputStream() {
     const auto device_index = GetDefaultInputDeviceIndex();

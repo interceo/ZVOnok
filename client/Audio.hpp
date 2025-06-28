@@ -14,9 +14,6 @@ using SAMPLE = short;
 #define BUF_SIZE (FRAMES_PER_BUFFER * NUM_CHANNELS)
 
 class Audio {
-    std::vector<size_t> input_devices;
-    std::vector<size_t> output_devices;
-
     PaStream* input_stream{NULL};
     PaStream* output_stream{NULL};
 
@@ -24,7 +21,7 @@ public:
     Audio();
     ~Audio();
 
-    void Update();
+    void Clear();
 
     int DeviceCount() const noexcept;
     const PaDeviceInfo* GetDeviceInfo(const PaDeviceIndex index) const noexcept;
@@ -32,9 +29,6 @@ public:
     const PaDeviceIndex GetDefaultOutputDeviceIndex() const noexcept;
     const PaDeviceInfo* GetDefaultInputDevice() const noexcept;
     const PaDeviceInfo* GetDefaultOutputDevice() const noexcept;
-
-    const std::vector<size_t>& GetInputDevices() const noexcept;
-    const std::vector<size_t>& GetOutputDevices() const noexcept;
 
     void CreateDefaultInputStream();
     void CreateDefaultOutputStream();
