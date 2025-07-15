@@ -1,52 +1,52 @@
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <cstring>
+#include "SignalingServer.hpp"
 #include <iostream>
-#include <unordered_set>
-#include <vector>
+#include <csignal>
+#include <memory>
+#include <thread>
+#include <chrono>
 
-#define PORT 12345
-#define BUF_SIZE 4096
+std::unique_ptr<SignalingServer> server;
 
-struct ClientAddrHash {
-    std::size_t operator()(const sockaddr_in& addr) const {
-        return std::hash<uint32_t>()(addr.sin_addr.s_addr) ^ std::hash<uint16_t>()(addr.sin_port);
+void signalHandler(int signal) {
+    std::cout << "\nReceived signal " << signal << ". Shutting down server..." << std::endl;
+    if (server) {
+        server->Stop();
     }
-};
-struct ClientAddrEqual {
-    bool operator()(const sockaddr_in& a, const sockaddr_in& b) const {
-        return a.sin_addr.s_addr == b.sin_addr.s_addr && a.sin_port == b.sin_port;
-    }
-};
+    exit(0);
+}
 
-int main() {
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    sockaddr_in serverAddr{}, clientAddr{};
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(PORT);
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr));
-
-    std::unordered_set<sockaddr_in, ClientAddrHash, ClientAddrEqual> clients;
-    char buffer[BUF_SIZE];
-
-    std::cout << "Voice chat server started on port " << PORT << std::endl;
-
-    while (true) {
-        socklen_t len = sizeof(clientAddr);
-        int n = recvfrom(sock, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr, &len);
-
-        if (n > 0) {
-            clients.insert(clientAddr);
-
-            for (const auto& c : clients) {
-                if (!(c.sin_addr.s_addr == clientAddr.sin_addr.s_addr && c.sin_port == clientAddr.sin_port)) {
-                    sendto(sock, buffer, n, 0, (sockaddr*)&c, sizeof(c));
-                }
-            }
+int main(int argc, char* argv[]) {
+    // Устанавливаем обработчик сигналов для graceful shutdown
+    signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
+    
+    // Порт по умолчанию
+    int port = 12345;
+    
+    // Парсим аргументы командной строки
+    if (argc > 1) {
+        port = std::atoi(argv[1]);
+        if (port <= 0 || port > 65535) {
+            std::cerr << "Invalid port number: " << argv[1] << std::endl;
+            return 1;
         }
     }
-    close(sock);
+    
+    // Создаем и запускаем сигналинг сервер
+    server = std::make_unique<SignalingServer>(port);
+    
+    if (!server->Start()) {
+        std::cerr << "Failed to start signaling server on port " << port << std::endl;
+        return 1;
+    }
+    
+    std::cout << "WebRTC Signaling Server running on port " << port << std::endl;
+    std::cout << "Press Ctrl+C to stop the server" << std::endl;
+    
+    // Основной цикл - ждем сигнала завершения
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    
     return 0;
 }

@@ -61,5 +61,6 @@
         "ios": "cpp",
         "locale": "cpp",
         "ranges": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "/Users/interceo/projects/ZVOnok/client"
 }
